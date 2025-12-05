@@ -12,7 +12,7 @@ This version preserves the original breakout logic while adding configurable tar
 ![Strategy Screenshot](screenshots/traffic-light-screenshot.png)
 
 ### Source Code  
-[Source Code](source-code/Traffic light strategy by shubhasis pani.txt)
+[Source Code](source-code/Traffic-light-strategy--shubhasis-pani.txt)
 
 ---
 
