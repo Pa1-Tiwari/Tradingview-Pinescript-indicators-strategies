@@ -1,7 +1,7 @@
 // This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 
 //@version=6
-strategy("Traffic light strategy" , overlay = true , process_orders_on_close = true)
+strategy("Traffic light strategy" , overlay = true , process_orders_on_close = true ,initial_capital = 1000000, margin_short = 0 ,margin_long = 0,default_qty_type = strategy.cash, default_qty_value = 1000000 )
 
 tString = input.string("15:00", "Intraday exit time")
 parts = str.split(tString, ":")
