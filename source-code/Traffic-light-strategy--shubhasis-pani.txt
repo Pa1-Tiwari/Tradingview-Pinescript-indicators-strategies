@@ -49,6 +49,8 @@ if signal and pos == 0 and na(lvl1) and (intraday_con or not intraday_bool)
 buy = high > lvl1 and pos == 0 and (intraday_con or not intraday_bool)
 sell = low < lvl2 and pos == 0 and (intraday_con or not intraday_bool)
 
+bgcolor((draw_lvl and not draw_lvl[1]) or(draw_lvl[1] and not draw_lvl[2])  ? color.new(color.orange,80) : color.new(color.orange,100),1)
+
 if buy and sell
     if open-low < high-open
         buy := false
