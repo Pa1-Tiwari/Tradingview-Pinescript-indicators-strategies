@@ -1,0 +1,119 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+//@version=6
+strategy("Traffic light strategy" , overlay = true , process_orders_on_close = true)
+
+tString = input.string("15:00", "Intraday exit time")
+parts = str.split(tString, ":")
+iHour = str.tonumber(parts.get(0))
+iMinute = str.tonumber(parts.get(1))
+
+// Current bar time
+h = hour(time)
+m = minute(time)
+
+
+// Condition
+intraday_con = (h <= iHour and ((m < iMinute and h >= iHour) or h < iHour ))
+intraday_bool = input.bool(false , 'Intraday')
+show_trades = input.bool(true , 'Show trades')
+show_tp_sl  = input.bool(true , 'Show Target/SL')
+
+tp_sl_type = input.string('Percent' , 'Target/SL type' , ['Percent' , 'Point'] , group = 'Target and SL settings')
+input_tgt  = input.float(1 , 'Taget value' , group = 'Target and SL settings')
+input_sl   = input.float(0.5 , 'Stoploss value' , group = 'Target and SL settings')
+
+var float lvl1 = na 
+var float lvl2 = na 
+var float tgt = na 
+var float sl  = na
+var float ent = na
+var draw_lvl   = false
+var pos = 0
+
+if (h == iHour and m == iMinute) and intraday_bool
+    strategy.cancel_all()
+    strategy.close_all()
+
+signal = ((close > open and close[1] < open[1]) or (close < open and close[1] > open[1])) and (time-time[1])/1000 == timeframe.in_seconds()
+
+if signal and pos == 0 and na(lvl1) and (intraday_con or not intraday_bool)
+    lvl1 := math.max(high , high[1])
+    lvl2 := math.min(low , low[1])
+    strategy.entry('long' , strategy.long , stop = lvl1,limit = lvl1 ,oca_name = 'limit' , oca_type = strategy.oca.cancel)
+    strategy.entry('Short' , strategy.short , stop = lvl2,limit = lvl2,oca_name = 'limit' , oca_type = strategy.oca.cancel)
+    strategy.exit('long exit' , 'long' , limit =  (lvl1 + (tp_sl_type == 'Percent' ? (input_tgt/100)*close : input_tgt)) , stop =  (lvl1 - (tp_sl_type == 'Percent' ? (input_sl/100)*close : input_sl)))
+    strategy.exit('short exit' , 'Short' , limit =  (lvl2 - (tp_sl_type == 'Percent' ? (input_tgt/100)*close : input_tgt)) , stop = (lvl2 + (tp_sl_type == 'Percent' ? (input_sl/100)*close : input_sl)))
+    draw_lvl := true
+
+buy = high > lvl1 and pos == 0 and (intraday_con or not intraday_bool)
+sell = low < lvl2 and pos == 0 and (intraday_con or not intraday_bool)
+
+if buy and sell
+    if open-low < high-open
+        buy := false
+    else
+        sell := false
+// buy
+if buy
+    pos := 1
+    draw_lvl := false
+    tgt := lvl1 + (tp_sl_type == 'Percent' ? (input_tgt/100)*close : input_tgt)
+    sl  := lvl1 - (tp_sl_type == 'Percent' ? (input_sl/100)*close : input_sl)
+    ent := lvl1
+    lvl1 := na
+    lvl2 := na
+
+//sell
+if sell
+    pos := -1
+    draw_lvl := false
+    tgt := lvl2 - (tp_sl_type == 'Percent' ? (input_tgt/100)*close : input_tgt)
+    sl  := lvl2 + (tp_sl_type == 'Percent' ? (input_sl/100)*close : input_sl)
+    ent := lvl2
+    lvl1 := na
+    lvl2 := na
+
+
+// exit long
+if pos == 1 and (high >= tgt or low <= sl)
+    pos := 0
+    tgt := na 
+    sl := na
+    ent := na
+    lvl1 := na
+    lvl2 := na
+
+// exit short
+if pos == -1 and (high >= sl or low <= tgt)
+    pos := 0
+    tgt := na 
+    sl := na
+    ent := na
+    lvl1 := na
+    lvl2 := na
+
+// intraday exit   
+if (h == iHour and m == iMinute) and intraday_bool
+    pos := 0
+    lvl1 := na 
+    lvl2 := na
+    tgt := na 
+    sl := na
+    ent := na
+    strategy.cancel_all()
+    strategy.close_all()
+
+// plots
+plot(lvl1[1], 'entry level' , draw_lvl ? color.gray : na , style = plot.style_linebr)
+plot(lvl2[1], 'entry level' , draw_lvl ? color.gray : na , style = plot.style_linebr)
+tgt_line = plot(tgt[1], 'Target level' , pos != 0 and show_tp_sl? color.teal : na , style = plot.style_linebr)
+sl_line = plot(sl[1], 'SL level' , pos != 0 and show_tp_sl ? color.maroon : na , style = plot.style_linebr)
+ent_line = plot(ent[1], 'entry level' , pos != 0 and show_tp_sl ? color.maroon : na , style = plot.style_linebr)
+fill(ent_line , tgt_line ,pos != 0 and show_tp_sl ? color.new(color.teal,80) : na , 'target fill')
+fill(ent_line , sl_line ,pos != 0  and show_tp_sl? color.new(color.maroon,80) : na , 'Stoploss fill')
+
+plotshape(show_trades ?  buy : false , 'long' , shape.triangleup , location.belowbar , color.teal , text = 'Long' , textcolor= color.teal )
+plotshape(show_trades ?  sell : false , 'short', shape.triangledown , location.abovebar , color.maroon , text = 'Short' , textcolor= color.maroon )
+plotshape(show_trades ?  pos[1] == 1 and pos == 0 : false , 'exit', shape.triangledown , location.abovebar , color.gray , text = 'Exit' , textcolor= color.gray )
+plotshape(show_trades ?  pos[1] == -1 and pos == 0 : false , 'exit', shape.triangleup , location.belowbar , color.gray , text = 'Exit' , textcolor= color.gray )
